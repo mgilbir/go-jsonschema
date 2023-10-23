@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/atombender/go-jsonschema/pkg/generator"
+	"github.com/atombender/go-jsonschema/pkg/schemas"
 )
 
 const (
@@ -76,6 +77,19 @@ var (
 				Tags:                tags,
 				OnlyModels:          onlyModels,
 			}
+
+			packagesToFiles := map[string]string{}
+
+			for _, fileName := range args {
+				pkg, err := extractPackageFrom(fileName)
+				if err != nil {
+					panic(err)
+				}
+				if pkg != "" {
+					packagesToFiles[pkg] = fileName
+				}
+			}
+
 			for _, id := range allKeys(schemaPackageMap, schemaOutputMap, schemaRootTypeMap) {
 				mapping := generator.SchemaMapping{SchemaID: id}
 				if s, ok := schemaPackageMap[id]; ok {
@@ -89,6 +103,10 @@ var (
 				if s, ok := schemaRootTypeMap[id]; ok {
 					mapping.RootType = s
 				}
+				if fileName, ok := packagesToFiles[id]; ok {
+					mapping.InputFilename = fileName
+				}
+
 				cfg.SchemaMappings = append(cfg.SchemaMappings, mapping)
 			}
 
@@ -226,4 +244,20 @@ func verboseLogf(format string, args ...interface{}) {
 	if verbose {
 		logf(format, args...)
 	}
+}
+
+func extractPackageFrom(fileName string) (string, error) {
+	s, err := schemas.FromJSONFile(fileName)
+	if err != nil {
+		return "", err
+	}
+
+	if s.ID != "" {
+		return s.ID, nil
+	} else if s.LegacyID != "" {
+		return s.LegacyID, nil
+	}
+
+	logf("no 'id' nor '$id' found in %s\n", fileName)
+	return "", nil
 }

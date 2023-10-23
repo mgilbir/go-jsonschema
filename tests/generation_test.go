@@ -67,6 +67,27 @@ func TestCrossPackage(t *testing.T) {
 	testExampleFile(t, cfg, "./data/crossPackage/schema/schema.json")
 }
 
+func TestCrossPackageCustomRef(t *testing.T) {
+	t.Parallel()
+
+	cfg := basicConfig
+	cfg.SchemaMappings = []generator.SchemaMapping{
+		{
+			SchemaID:      "package://example.com/schema",
+			PackageName:   "github.com/atombender/go-jsonschema/tests/helpers/schema",
+			InputFilename: "./schema/schema.json",
+			OutputName:    "schema.go",
+		},
+		{
+			SchemaID:      "package://example.com/other",
+			PackageName:   "github.com/atombender/go-jsonschema/tests/data/crossPackage/other",
+			InputFilename: "../other/other.json",
+			OutputName:    "../other/other.go",
+		},
+	}
+	testExampleFile(t, cfg, "./data/crossPackageCustomRef/schema/schema.json")
+}
+
 func TestCrossPackageNoOutput(t *testing.T) {
 	t.Parallel()
 

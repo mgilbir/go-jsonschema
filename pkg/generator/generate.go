@@ -28,14 +28,16 @@ type Config struct {
 }
 
 type SchemaMapping struct {
-	SchemaID    string
-	PackageName string
-	RootType    string
-	OutputName  string
+	SchemaID      string
+	PackageName   string
+	RootType      string
+	InputFilename string
+	OutputName    string
 }
 
 type Generator struct {
 	config                Config
+	customRefs            map[string]string
 	outputs               map[string]*output
 	schemaCacheByFileName map[string]*schemas.Schema
 	inScope               map[qualifiedDefinition]struct{}
@@ -70,8 +72,16 @@ func New(config Config) (*Generator, error) {
 		formatters = append(formatters, &yamlFormatter{})
 	}
 
+	customRefs := make(map[string]string)
+	for _, m := range config.SchemaMappings {
+		if m.InputFilename != "" {
+			customRefs[m.SchemaID] = m.InputFilename
+		}
+	}
+
 	return &Generator{
 		config:                config,
+		customRefs:            customRefs,
 		outputs:               map[string]*output{},
 		schemaCacheByFileName: map[string]*schemas.Schema{},
 		inScope:               map[qualifiedDefinition]struct{}{},
@@ -411,8 +421,12 @@ func (g *schemaGenerator) generateReferencedType(ref string) (codegen.Type, erro
 	var schema *schemas.Schema
 
 	if fileName != "" {
-		var err error
 
+		if f, ok := g.customRefs[fileName]; ok {
+			fileName = f
+		}
+
+		var err error
 		schema, err = g.loadSchemaFromFile(fileName, g.schemaFileName)
 		if err != nil {
 			return nil, fmt.Errorf("could not follow $ref %q to file %q: %w", ref, fileName, err)
